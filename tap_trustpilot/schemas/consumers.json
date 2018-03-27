@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "properties": {
+      "id": {
+          "type": "string"
+      },
+      "business_unit_id": {
+          "type": "string"
+      },
+      "numberOfReviews": {
+          "type": ["null", "integer"]
+      },
+      "displayName": {
+          "type": ["null", "string"]
+      },
+      "city": {
+          "type": ["null", "string"]
+      },
+      "country": {
+          "type": ["null", "string"]
+      },
+      "gender": {
+          "type": ["null", "string"]
+      },
+      "createdAt": {
+          "type": ["null", "string"]
+      },
+      "about": {
+          "type": ["null", "string"]
+      },
+      "birthYear": {
+          "type": ["null", "string"]
+      },
+      "locale": {
+          "type": ["null", "string"]
+      },
+      "hasImage": {
+          "type": "boolean"
+      }
+   },
+   "additionalProperties": false
+}

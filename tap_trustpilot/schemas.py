@@ -5,13 +5,17 @@ from singer import utils
 
 
 class IDS(object):
-    FOO = "foo"
+    BUSINESS_UNITS = "business_units"
+    REVIEWS = "reviews"
+    CONSUMERS = "consumers"
 
 stream_ids = [getattr(IDS, x) for x in dir(IDS)
               if not x.startswith("__")]
 
 PK_FIELDS = {
-    IDS.FOO: ["foo"],
+    IDS.BUSINESS_UNITS: ["id"],
+    IDS.REVIEWS: ["business_unit_id", "id"],
+    IDS.CONSUMERS: ["id"],
 }
 
 

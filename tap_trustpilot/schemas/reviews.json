@@ -1,0 +1,96 @@
+{
+  "type": "object",
+  "properties": {
+      "id": {
+          "type": "string"
+      },
+      "business_unit_id": {
+          "type": "string"
+      },
+      "consumer": {
+          "type": "object",
+          "properties": {
+              "id": {
+                  "type": "string"
+              },
+              "displayName": {
+                  "type": ["string", "null"]
+              },
+              "displayLocation": {
+                  "type": ["string", "null"]
+              },
+              "numberOfReviews": {
+                  "type": "integer"
+              }
+          }
+      },
+      "businessUnit": {
+          "type": "object",
+          "properties": {
+              "id": {
+                  "type": "string"
+              },
+              "identifyingName": {
+                  "type": ["string", "null"]
+              },
+              "displayName": {
+                  "type": ["string", "null"]
+              }
+          }
+      },
+      "stars": {
+          "type": ["integer", "null"]
+      },
+      "title": {
+          "type": ["string", "null"]
+      },
+      "text": {
+          "type": ["string", "null"]
+      },
+      "language": {
+          "type": ["string", "null"]
+      },
+      "createdAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+      },
+      "updatedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+      },
+      "companyReply": {
+          "type": ["object", "null"],
+          "properties": {
+              "createdAt": {
+                  "type": ["string", "null"]
+              },
+              "text": {
+                  "type": "string"
+              }
+          }
+      },
+      "isVerified": {
+          "type": "boolean"
+      },
+      "numberOfLikes": {
+          "type": "integer"
+      },
+      "status": {
+          "type": ["null", "string"]
+      },
+      "reportData": {
+          "type": "null",
+          "comment": "TODO: Investigate!"
+      },
+      "complianceLabels": {
+          "type": "array",
+          "items": {
+              "type": "string"
+          }
+      },
+      "countsTowardsTrustScore": {
+          "type": "boolean"
+      }
+  },
+  "additionalProperties": false
+}

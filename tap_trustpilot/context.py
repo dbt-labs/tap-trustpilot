@@ -23,6 +23,8 @@ class Context(object):
         self.selected_stream_ids = None
         self.now = datetime.utcnow()
 
+        self.cache = {}
+
     @property
     def catalog(self):
         return self._catalog
