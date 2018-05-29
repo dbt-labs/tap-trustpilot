@@ -14,6 +14,21 @@ This tap:
 
 This tap does _not_ support incremental replication!
 
+
+### Configuration
+
+Create a `config.json` file that looks like this:
+
+```
+{
+    "access_key": "...",
+    "client_secret": "...",
+    "username": "user@email.com",
+    "password": "hunter2",
+    "business_unit_id": "123abc"
+}
+```
+
 ---
 
 Copyright &copy; 2018 Fishtown Analytics
