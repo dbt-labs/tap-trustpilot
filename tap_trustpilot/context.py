@@ -5,37 +5,23 @@ from singer import bookmarks as bks_
 from .http import Client
 
 
-class Context(object):
+class Context:
     """Represents a collection of global objects necessary for performing
     discovery or for running syncs. Notably, it contains
 
     - config  - The JSON structure from the config.json argument
     - state   - The mutable state dict that is shared among streams
     - client  - An HTTP client object for interacting with the API
-    - catalog - A singer.catalog.Catalog. Note this will be None during
-                discovery.
+    - catalog - A singer.catalog.Catalog.
     """
-    def __init__(self, config, state):
+    def __init__(self, config, catalog, state):
         self.config = config
         self.state = state
         self.client = Client(config)
-        self._catalog = None
-        self.selected_stream_ids = None
+        self.catalog = catalog
         self.now = datetime.utcnow()
 
         self.cache = {}
-
-    @property
-    def catalog(self):
-        return self._catalog
-
-    @catalog.setter
-    def catalog(self, catalog):
-        self._catalog = catalog
-        self.selected_stream_ids = set(
-            [s.tap_stream_id for s in catalog.streams
-             if s.is_selected()]
-        )
 
     def get_bookmark(self, path):
         return bks_.get_bookmark(self.state, *path)
