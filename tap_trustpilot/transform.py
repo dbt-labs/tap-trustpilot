@@ -1,12 +1,11 @@
-
-import singer
 import datetime
+import singer
 
 LOGGER = singer.get_logger()
 
 class NotBrokenDatetimeTransformer(singer.Transformer):
     def __init__(self, *args, **kwargs):
-        super(NotBrokenDatetimeTransformer, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def _transform_datetime(self, value):
         if value is None:

@@ -1,7 +1,7 @@
+import base64
+import backoff
 import requests
 from singer import metrics
-import backoff
-import base64
 
 BASE_URL = "https://api.trustpilot.com/v1"
 AUTH_URL = "{}/oauth/oauth-business-users-for-applications/accesstoken".format(BASE_URL)
@@ -15,7 +15,7 @@ def _join(a, b):
     return a.rstrip("/") + "/" + b.lstrip("/")
 
 
-class Client(object):
+class Client:
     def __init__(self, config):
         self.user_agent = config.get("user_agent")
         self.session = requests.Session()

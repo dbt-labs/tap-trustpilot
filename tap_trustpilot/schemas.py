@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import os
+import json
 import singer
 from singer import utils
 
 
-class IDS(object):
+class IDS:
     BUSINESS_UNITS = "business_units"
     REVIEWS = "reviews"
     CONSUMERS = "consumers"
