@@ -25,7 +25,8 @@ Create a `config.json` file that looks like this:
     "client_secret": "...",
     "username": "user@email.com",
     "password": "hunter2",
-    "business_unit_id": "123abc"
+    "business_unit_id": "123abc",
+    "user_agent": "tap-trustpilot <my.email@domain.com>"
 }
 ```
 
