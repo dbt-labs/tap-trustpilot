@@ -37,7 +37,9 @@ def discover(client, config):
                 metadata=metadata.get_standard_metadata(
                     schema=raw_schema,
                     schema_name=stream_name,
-                    key_properties=stream_class.key_properties)
+                    key_properties=stream_class.key_properties,
+                    valid_replication_keys=stream_class.replication_keys,
+                    replication_method=stream_class.replication_method)
             )
         )
     return Catalog(streams)

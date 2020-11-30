@@ -7,6 +7,8 @@ PAGE_SIZE = 100
 
 class Stream:
     key_properties = None
+    replication_method = None
+    replication_keys = None
 
     def __init__(self, tap_stream_id, path,
                  returns_collection=True,
@@ -45,6 +47,7 @@ class Stream:
 
 class BusinessUnits(Stream):
     key_properties = ['id']
+    replication_method = 'FULL_TABLE'
 
     def raw_fetch(self, ctx):
         return ctx.client.GET({"path": self.path}, self.tap_stream_id)
@@ -100,6 +103,7 @@ class Paginated(Stream):
 
 class Reviews(Paginated):
     key_properties = ['business_unit_id','id']
+    replication_method = 'FULL_TABLE'
 
     def add_consumers_to_cache(self, ctx, batch):
         for record in batch:
@@ -115,6 +119,7 @@ class Reviews(Paginated):
 
 class Consumers(Stream):
     key_properties = ['id']
+    replication_method = 'FULL_TABLE'
 
     def sync(self, ctx):
         business_unit_id = ctx.cache['business_unit']['id']
