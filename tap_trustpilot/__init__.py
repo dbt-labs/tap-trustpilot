@@ -3,11 +3,9 @@ import os
 import json
 import singer
 from singer import utils
-from singer.catalog import Catalog, CatalogEntry, Schema
-from singer import metadata
 
-from . import schemas
 from .http import Client
+from .discover import discover
 from .sync import sync
 
 REQUIRED_CONFIG_KEYS = [
@@ -19,31 +17,6 @@ REQUIRED_CONFIG_KEYS = [
 ]
 
 LOGGER = singer.get_logger()
-
-
-def check_credentials_are_authorized(client, config):
-    client.auth(config)
-
-
-def discover(client, config):
-    check_credentials_are_authorized(client, config)
-    streams = []
-    for tap_stream_id in schemas.stream_ids:
-        raw_schema=schemas.load_schema(tap_stream_id)
-        schema = Schema.from_dict(raw_schema)
-        streams.append(
-            CatalogEntry(
-                stream=tap_stream_id,
-                tap_stream_id=tap_stream_id,
-                key_properties=schemas.PK_FIELDS[tap_stream_id],
-                schema=schema,
-                metadata=metadata.get_standard_metadata(
-                    schema=raw_schema,
-                    schema_name=tap_stream_id,
-                    key_properties=schemas.PK_FIELDS[tap_stream_id])
-            )
-        )
-    return Catalog(streams)
 
 
 @utils.handle_top_exception(LOGGER)

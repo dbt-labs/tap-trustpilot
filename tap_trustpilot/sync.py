@@ -2,7 +2,7 @@ import singer
 
 from .context import Context
 from . import streams as streams_
-from .streams import all_streams
+from .streams import STREAMS
 
 
 LOGGER = singer.get_logger()
@@ -13,7 +13,7 @@ def sync(config, catalog, state):
     """ Sync data from tap source """
 
     ctx = Context(config, catalog, state)
-    streams_.business_units.fetch_into_cache(ctx)
+    STREAMS['business_units'].fetch_into_cache(ctx)
 
     # Get selected_streams from catalog, based on state last_stream
     #   last_stream = Previous currently synced stream, if the load was interrupted
@@ -31,8 +31,7 @@ def sync(config, catalog, state):
         return
 
     # Loop through endpoints in selected_streams
-    for stream_class in all_streams:
-        stream_name = stream_class.tap_stream_id
+    for stream_name, stream_class in STREAMS.items():
         if stream_name in selected_streams:
             LOGGER.info('START Syncing: {}'.format(stream_name))
             stream = selected_streams_by_name[stream_name]

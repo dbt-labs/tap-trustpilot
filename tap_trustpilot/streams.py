@@ -1,5 +1,4 @@
 import singer
-from .schemas import IDS
 from . import transform
 
 LOGGER = singer.get_logger()
@@ -7,6 +6,8 @@ PAGE_SIZE = 100
 
 
 class Stream:
+    key_properties = None
+
     def __init__(self, tap_stream_id, path,
                  returns_collection=True,
                  collection_key=None,
@@ -43,6 +44,8 @@ class Stream:
 
 
 class BusinessUnits(Stream):
+    key_properties = ['id']
+
     def raw_fetch(self, ctx):
         return ctx.client.GET({"path": self.path}, self.tap_stream_id)
 
@@ -96,6 +99,8 @@ class Paginated(Stream):
 
 
 class Reviews(Paginated):
+    key_properties = ['business_unit_id','id']
+
     def add_consumers_to_cache(self, ctx, batch):
         for record in batch:
             consumer_id = record.get('consumer', {}).get('id')
@@ -109,6 +114,8 @@ class Reviews(Paginated):
 
 
 class Consumers(Stream):
+    key_properties = ['id']
+
     def sync(self, ctx):
         business_unit_id = ctx.cache['business_unit']['id']
 
@@ -127,10 +134,14 @@ class Consumers(Stream):
             self.write_records(records)
 
 
-business_units = BusinessUnits(IDS.BUSINESS_UNITS, "/business-units/:business_unit_id/profileinfo")
-all_streams = [
-    business_units,
-    Reviews(IDS.REVIEWS, '/business-units/:business_unit_id/reviews', collection_key='reviews'),
-    Consumers(IDS.CONSUMERS, '/consumers/{consumerId}/profile')
-]
-all_stream_ids = [s.tap_stream_id for s in all_streams]
+STREAMS = {
+    'business_units': BusinessUnits(
+        tap_stream_id='business_units',
+        path="/business-units/:business_unit_id/profileinfo"),
+    'reviews': Reviews(
+        tap_stream_id='reviews',
+        path='/business-units/:business_unit_id/reviews', collection_key='reviews'),
+    'consumers': Consumers(
+        tap_stream_id='consumers',
+        path='/consumers/{consumerId}/profile'),
+}
