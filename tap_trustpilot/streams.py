@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 import singer
 from singer import bookmarks, utils
 from . import transform
@@ -69,7 +69,7 @@ class BusinessUnitStream(Stream):
         return super().path \
             .replace(':business_unit_id', self._current_business_unit_id)
 
-    def sync_business_unit(self, ctx, business_unit_id):
+    def sync_business_unit(self, ctx, business_unit_id): # pylint: disable=unused-argument
         self._current_business_unit_id = business_unit_id
 
     def sync(self, ctx):
@@ -118,7 +118,7 @@ class BusinessUnits(BusinessUnitStream):
 
 
 class Paginated(Stream):
-    def get_params(self, page, ctx):
+    def get_params(self, page, ctx): # pylint: disable=unused-argument
         return {
             "page": page,
             "perPage": PAGE_SIZE,

@@ -1,7 +1,6 @@
 import singer
 
 from .context import Context
-from . import streams as streams_
 from .streams import STREAMS
 
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import os
-import json
-import singer
 from singer import utils
 from singer.catalog import Catalog, CatalogEntry, Schema
 from singer import metadata
