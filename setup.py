@@ -13,7 +13,6 @@ setup(
         "singer-python==5.9.1",
         "requests==2.25.0",
         "backoff==1.8.0",
-        "pendulum==2.1.2",
     ],
     entry_points="""
     [console_scripts]
