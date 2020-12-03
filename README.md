@@ -25,7 +25,7 @@ Create a `config.json` file that looks like this:
     "client_secret": "...",
     "username": "user@email.com",
     "password": "hunter2",
-    "business_unit_id": "123abc",
+    "business_units": ["my_domain.com", "www.my_domain.co.uk"],
     "user_agent": "tap-trustpilot <my.email@domain.com>",
     "start_date": "2000-01-01T00:00:00Z"
 }
@@ -37,6 +37,7 @@ Create a `config.json` file that looks like this:
 | `client_secret`    | For auth. | See https://documentation-apidocumentation.trustpilot.com/authentication
 | `username`         | For auth. | Username of your TrustPilot account
 | `password`         | For auth. | Username of your TrustPilot account
+| `business_units`   | Alternate to `business_unit_id` | An array of business units by their name. The tap will request the business unit ID.<br/>When this config property is used `business_unit_id` is ignored.
 | `business_unit_id` | Yes       | A single business unit ID from TrustPilot
 | `user_agent`       | No        | User agent to be used for HTTP requests
 | `start_date`       | No        | For streams with replication method `INCREMENTAL` the start date time to be used

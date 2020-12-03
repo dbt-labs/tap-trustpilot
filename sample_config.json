@@ -3,7 +3,7 @@
     "client_secret": "...",
     "username": "user@email.com",
     "password": "hunter2",
-    "business_unit_id": "123abc",
+    "business_units": ["my_domain.com", "www.my_domain.co.uk"],
     "user_agent": "tap-trustpilot <my.email@domain.com>",
     "start_date": "2000-01-01T00:00:00Z"
 }

@@ -13,7 +13,6 @@ def sync(config, catalog, state):
     """ Sync data from tap source """
 
     ctx = Context(config, catalog, state)
-    STREAMS['business_units'].fetch_into_cache(ctx)
 
     # Get selected_streams from catalog, based on state last_stream
     #   last_stream = Previous currently synced stream, if the load was interrupted

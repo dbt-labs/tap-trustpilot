@@ -20,7 +20,6 @@ class Client:
         self.user_agent = config.get("user_agent")
         self.session = requests.Session()
 
-        self.business_unit_id = config['business_unit_id']
         self.access_key = config['access_key']
         self._token = None
 
@@ -71,8 +70,7 @@ class Client:
         return self.session.send(request.prepare())
 
     def url(self, path):
-        joined = _join(BASE_URL, path)
-        return joined.replace(':business_unit_id', self.business_unit_id)
+        return _join(BASE_URL, path)
 
     def create_get_request(self, path, **kwargs):
         return requests.Request(method="GET", url=self.url(path), **kwargs)

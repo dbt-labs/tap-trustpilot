@@ -18,7 +18,7 @@ class Stream:
                  custom_formatter=None,
                  requires_authentication=False):
         self.tap_stream_id = tap_stream_id
-        self.path = path
+        self._path = path
         self.returns_collection = returns_collection
         self.collection_key = collection_key
         self.custom_formatter = custom_formatter or (lambda x: x)
@@ -48,34 +48,72 @@ class Stream:
         transformed = [transform.transform(item, schema) for item in records]
         return transformed
 
+    @property
+    def path(self):
+        return self._path
+
     def sync(self, ctx):
         if self.requires_authentication:
             # make sure the client is authenticated
             ctx.client.ensure_auth(ctx.config)
 
-class BusinessUnits(Stream):
+
+class BusinessUnitStream(Stream):
+    business_unit_find_path = '/business-units/find'
+
+    _current_business_unit_id = None
+
+    @property
+    def path(self):
+        """Builds the final path to be used in the client"""
+        return super().path \
+            .replace(':business_unit_id', self._current_business_unit_id)
+
+    def sync_business_unit(self, ctx, business_unit_id):
+        self._current_business_unit_id = business_unit_id
+
+    def sync(self, ctx):
+        super().sync(ctx)
+
+        business_units = ctx.config.get('business_units',[])
+
+        if not business_units and ctx.config.get('business_unit_id'):
+            self.sync_business_unit(ctx, business_unit_id=ctx.config['business_unit_id'])
+        else:
+            # in case the user did not configure an array ...
+            if not isinstance(business_units, list):
+                business_units = [business_units]
+
+            for business_unit in business_units:
+                LOGGER.info("Sync business unit: {}".format(business_unit))
+                path = self.business_unit_find_path
+                params = {"name": business_unit}
+                resp = ctx.client.GET({"path": path, "params": params}, self.tap_stream_id)
+                business_unit = self.transform(ctx, [resp])
+
+                if len(business_units) == 0:
+                    raise RuntimeError(f"Business Unit with name {business_unit} was not found!")
+
+                business_unit_id = business_unit[0]['id']
+
+                self.sync_business_unit(ctx, business_unit_id)
+
+
+class BusinessUnits(BusinessUnitStream):
     key_properties = ['id']
     replication_method = 'FULL_TABLE'
 
-    def raw_fetch(self, ctx):
-        return ctx.client.GET({"path": self.path}, self.tap_stream_id)
+    def sync_business_unit(self, ctx, business_unit_id):
+        super().sync_business_unit(ctx, business_unit_id)
 
-    def fetch_into_cache(self, ctx):
-        business_unit_id = ctx.config['business_unit_id']
-
-        resp = self.raw_fetch(ctx)
-        resp['id'] = business_unit_id
+        resp = ctx.client.GET({"path": self.path}, self.tap_stream_id)
 
         business_units = self.transform(ctx, [resp])
 
         if len(business_units) == 0:
             raise RuntimeError("Business Unit {} was not found!".format(business_unit_id))
 
-        ctx.cache["business_unit"] = business_units[0]
-
-    def sync(self, ctx):
-        super().sync(ctx)
-        self.write_records([ctx.cache["business_unit"]])
+        self.write_records(business_units)
 
 
 
@@ -111,30 +149,30 @@ class Paginated(Stream):
             page += 1
 
 
-class Reviews(Paginated):
+class Reviews(Paginated, BusinessUnitStream):
     key_properties = ['business_unit_id','id']
     replication_method = 'FULL_TABLE'
 
-    _business_unit_id = None
-
-    def add_consumers_to_cache(self, ctx, batch):
+    def add_consumers_to_cache(self, ctx, batch, business_unit_id):
         for record in batch:
             consumer_id = record.get('consumer', {}).get('id')
             if consumer_id is not None:
-                ctx.cache['consumer_ids'].add(consumer_id)
+                ctx.cache['consumer_ids'][business_unit_id].add(consumer_id)
 
     def _modify_record(self, raw_record):
-        raw_record['business_unit_id'] = self._business_unit_id
-
-    def _sync(self, ctx):
-        self._business_unit_id = ctx.cache['business_unit']['id']
-        return super()._sync(ctx)
+        raw_record['business_unit_id'] = self._current_business_unit_id
 
     def sync(self, ctx):
+        ctx.cache['consumer_ids'] = dict()
         super().sync(ctx)
-        ctx.cache['consumer_ids'] = set()
+
+    def sync_business_unit(self, ctx, business_unit_id):
+        super().sync_business_unit(ctx, business_unit_id)
+
+        ctx.cache['consumer_ids'][business_unit_id] = set()
+
         for batch in self._sync(ctx):
-            self.add_consumers_to_cache(ctx, batch)
+            self.add_consumers_to_cache(ctx, batch, business_unit_id)
 
 
 class Consumers(Stream):
@@ -142,24 +180,24 @@ class Consumers(Stream):
     replication_method = 'FULL_TABLE'
 
     def sync(self, ctx):
-        business_unit_id = ctx.cache['business_unit']['id']
+        for business_unit_id, customer_ids in ctx.cache['consumer_ids'].items():
+            LOGGER.info("Sync business unit id: {}".format(business_unit_id))
+            total = len(customer_ids)
+            for i, consumer_id in enumerate(customer_ids):
+                LOGGER.info("Fetching consumer {} of {} ({})".format(i + 1, total, consumer_id))
+                path = self.path.format(consumerId=consumer_id)
+                resp = ctx.client.GET({"path": path}, self.tap_stream_id)
 
-        total = len(ctx.cache['consumer_ids'])
-        for i, consumer_id in enumerate(ctx.cache['consumer_ids']):
-            LOGGER.info("Fetching consumer {} of {} ({})".format(i + 1, total, consumer_id))
-            path = self.path.format(consumerId=consumer_id)
-            resp = ctx.client.GET({"path": path}, self.tap_stream_id)
+                raw_records = self.format_response([resp])
 
-            raw_records = self.format_response([resp])
+                for raw_record in raw_records:
+                    raw_record['business_unit_id'] = business_unit_id
 
-            for raw_record in raw_records:
-                raw_record['business_unit_id'] = business_unit_id
-
-            records = self.transform(ctx, raw_records)
-            self.write_records(records)
+                records = self.transform(ctx, raw_records)
+                self.write_records(records)
 
 
-class PrivateReviews(Paginated):
+class PrivateReviews(Paginated, BusinessUnitStream):
     key_properties = ['id']
     replication_method = 'INCREMENTAL'
     bookmark_field = 'createdAt'
@@ -169,7 +207,7 @@ class PrivateReviews(Paginated):
 
         start_date_time = bookmarks.get_bookmark(
             ctx.state, self.tap_stream_id,
-            key=f'buid({ctx.client.business_unit_id})_lastCreatedAt')
+            key=f'buid({self._current_business_unit_id})_lastCreatedAt')
         if start_date_time:
             # conver to datetime + add 1 millisecond so that we only get new records
             start_date_time = utils.strptime_to_utc(start_date_time) \
@@ -185,8 +223,8 @@ class PrivateReviews(Paginated):
 
         return params
 
-    def sync(self, ctx):
-        super().sync(ctx)
+    def sync_business_unit(self, ctx, business_unit_id):
+        super().sync_business_unit(ctx, business_unit_id)
         max_bookmark_value = None
 
         for batch in self._sync(ctx):
@@ -200,7 +238,7 @@ class PrivateReviews(Paginated):
 
         if max_bookmark_value:
             bookmarks.write_bookmark(ctx.state, self.tap_stream_id,
-                                     key=f'buid({ctx.client.business_unit_id})_lastCreatedAt',
+                                     key=f'buid({business_unit_id})_lastCreatedAt',
                                      val=utils.strftime(max_bookmark_value))
             singer.write_state(ctx.state)
 

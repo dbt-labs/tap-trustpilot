@@ -9,8 +9,7 @@ from .discover import discover
 from .sync import sync
 
 REQUIRED_CONFIG_KEYS = [
-    "access_key",
-    "business_unit_id"
+    "access_key"
 ]
 
 LOGGER = singer.get_logger()
@@ -20,6 +19,9 @@ LOGGER = singer.get_logger()
 def main():
     # Parse command line arguments
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+
+    if args.config.get('business_unit_id') is None and args.config.get('business_units') is None:
+        raise Exception("Config is missing key business_units or business_unit_id")
 
     state = {}
     if args.state:
