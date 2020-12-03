@@ -18,12 +18,7 @@ def load_schema(tap_stream_id):
     return utils.load_json(get_abs_path(path))
 
 
-def check_credentials_are_authorized(client, config):
-    client.auth(config)
-
-
-def discover(client, config):
-    check_credentials_are_authorized(client, config)
+def discover():
     streams = []
     for stream_name, stream_class in STREAMS.items():
         raw_schema=load_schema(stream_name)

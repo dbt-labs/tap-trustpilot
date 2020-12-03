@@ -25,6 +25,8 @@ class Client:
         self._token = None
 
     def get_token(self, config):
+        if 'client_secret' not in config or 'username' not in config or 'password' not in config:
+            raise Exception('For authentication the config properties client_secret, username and password are required')
         creds = "{}:{}".format(config['access_key'], config['client_secret']).encode()
         encoded_creds = base64.b64encode(creds)
         headers = {
@@ -53,11 +55,17 @@ class Client:
         token = resp['access_token']
         self._token = token
 
+    def ensure_auth(self, config):
+        """Make sure the client is authenticated"""
+        if not self._token:
+            self.auth(config)
+
     def prepare_and_send(self, request):
         if self.user_agent:
             request.headers["User-Agent"] = self.user_agent
 
-        request.headers['Authorization'] = 'Bearer {}'.format(self._token)
+        if self._token:
+            request.headers['Authorization'] = 'Bearer {}'.format(self._token)
         request.headers['apikey'] = self.access_key
 
         return self.session.send(request.prepare())

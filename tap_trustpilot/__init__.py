@@ -10,9 +10,6 @@ from .sync import sync
 
 REQUIRED_CONFIG_KEYS = [
     "access_key",
-    "client_secret",
-    "username",
-    "password",
     "business_unit_id"
 ]
 
@@ -34,8 +31,7 @@ def main():
 
     # If discover flag was passed, run discovery mode and dump output to stdout
     if args.discover:
-        client = Client(config)
-        catalog = discover(client, config)
+        catalog = discover()
         catalog.dump()
     # Otherwise run in sync mode
     elif args.catalog:

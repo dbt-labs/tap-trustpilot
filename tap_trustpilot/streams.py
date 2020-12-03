@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta
 import singer
+from singer import bookmarks, utils
 from . import transform
 
 LOGGER = singer.get_logger()
@@ -13,12 +15,14 @@ class Stream:
     def __init__(self, tap_stream_id, path,
                  returns_collection=True,
                  collection_key=None,
-                 custom_formatter=None):
+                 custom_formatter=None,
+                 requires_authentication=False):
         self.tap_stream_id = tap_stream_id
         self.path = path
         self.returns_collection = returns_collection
         self.collection_key = collection_key
         self.custom_formatter = custom_formatter or (lambda x: x)
+        self.requires_authentication = requires_authentication
 
     def metrics(self, records):
         with singer.metrics.record_counter(self.tap_stream_id) as counter:
@@ -44,6 +48,10 @@ class Stream:
         transformed = [transform.transform(item, schema) for item in records]
         return transformed
 
+    def sync(self, ctx):
+        if self.requires_authentication:
+            # make sure the client is authenticated
+            ctx.client.ensure_auth(ctx.config)
 
 class BusinessUnits(Stream):
     key_properties = ['id']
@@ -66,30 +74,32 @@ class BusinessUnits(Stream):
         ctx.cache["business_unit"] = business_units[0]
 
     def sync(self, ctx):
+        super().sync(ctx)
         self.write_records([ctx.cache["business_unit"]])
 
 
 
 class Paginated(Stream):
-    def get_params(self, page):
+    def get_params(self, page, ctx):
         return {
             "page": page,
             "perPage": PAGE_SIZE,
             "orderBy": "createdat.asc"
         }
 
-    def _sync(self, ctx):
-        business_unit_id = ctx.cache['business_unit']['id']
+    def _modify_record(self, raw_record):
+        pass
 
+    def _sync(self, ctx):
         page = 1
         while True:
             LOGGER.info("Fetching page {} for {}".format(page, self.tap_stream_id))
-            params = self.get_params(page)
+            params = self.get_params(page, ctx)
             resp = ctx.client.GET({"path": self.path, "params": params}, self.tap_stream_id)
             raw_records = self.format_response(resp)
 
             for raw_record in raw_records:
-                raw_record['business_unit_id'] = business_unit_id
+                self._modify_record(raw_record)
 
             records = self.transform(ctx, raw_records)
             self.write_records(records)
@@ -105,13 +115,23 @@ class Reviews(Paginated):
     key_properties = ['business_unit_id','id']
     replication_method = 'FULL_TABLE'
 
+    _business_unit_id = None
+
     def add_consumers_to_cache(self, ctx, batch):
         for record in batch:
             consumer_id = record.get('consumer', {}).get('id')
             if consumer_id is not None:
                 ctx.cache['consumer_ids'].add(consumer_id)
 
+    def _modify_record(self, raw_record):
+        raw_record['business_unit_id'] = self._business_unit_id
+
+    def _sync(self, ctx):
+        self._business_unit_id = ctx.cache['business_unit']['id']
+        return super()._sync(ctx)
+
     def sync(self, ctx):
+        super().sync(ctx)
         ctx.cache['consumer_ids'] = set()
         for batch in self._sync(ctx):
             self.add_consumers_to_cache(ctx, batch)
@@ -139,14 +159,66 @@ class Consumers(Stream):
             self.write_records(records)
 
 
+class PrivateReviews(Paginated):
+    key_properties = ['id']
+    replication_method = 'INCREMENTAL'
+    bookmark_field = 'createdAt'
+
+    def get_params(self, page, ctx):
+        params = super().get_params(page, ctx)
+
+        start_date_time = bookmarks.get_bookmark(
+            ctx.state, self.tap_stream_id,
+            key=f'buid({ctx.client.business_unit_id})_lastCreatedAt')
+        if start_date_time:
+            # conver to datetime + add 1 millisecond so that we only get new records
+            start_date_time = utils.strptime_to_utc(start_date_time) \
+                              + timedelta(milliseconds=1)
+
+        if not start_date_time and ctx.config.get('start_date'):
+            start_date_time = utils.strptime_to_utc(ctx.config['start_date'])
+
+        if start_date_time:
+            params.update({
+                'startDateTime': start_date_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            })
+
+        return params
+
+    def sync(self, ctx):
+        super().sync(ctx)
+        max_bookmark_value = None
+
+        for batch in self._sync(ctx):
+            for record in batch:
+                bookmark_value = record.get(self.bookmark_field)
+                if bookmark_value:
+                    bookmark_dttm = utils.strptime_to_utc(bookmark_value)
+                    if bookmark_dttm and (max_bookmark_value is None or
+                                          bookmark_dttm > max_bookmark_value):
+                        max_bookmark_value = bookmark_dttm
+
+        if max_bookmark_value:
+            bookmarks.write_bookmark(ctx.state, self.tap_stream_id,
+                                     key=f'buid({ctx.client.business_unit_id})_lastCreatedAt',
+                                     val=utils.strftime(max_bookmark_value))
+            singer.write_state(ctx.state)
+
+
 STREAMS = {
     'business_units': BusinessUnits(
         tap_stream_id='business_units',
         path="/business-units/:business_unit_id/profileinfo"),
     'reviews': Reviews(
         tap_stream_id='reviews',
-        path='/business-units/:business_unit_id/reviews', collection_key='reviews'),
+        path='/business-units/:business_unit_id/reviews',
+        collection_key='reviews'),
     'consumers': Consumers(
         tap_stream_id='consumers',
         path='/consumers/{consumerId}/profile'),
+    'private_reviews': PrivateReviews(
+        tap_stream_id='private_reviews',
+        path='/private/business-units/:business_unit_id/reviews',
+        collection_key='reviews',
+        requires_authentication=True),
 }
