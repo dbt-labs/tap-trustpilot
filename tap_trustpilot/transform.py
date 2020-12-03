@@ -11,6 +11,10 @@ class NotBrokenDatetimeTransformer(singer.Transformer):
         if value is None:
             return None
 
+        if len(value) > 20:
+            # sometimes the date includes milliseconds. Then we don't need a custom transformation
+            return value
+
         dt = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%SZ')
         return dt.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
