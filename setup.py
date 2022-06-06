@@ -10,7 +10,7 @@ setup(
     classifiers=["Programming Language :: Python :: 3 :: Only"],
     py_modules=["tap_trustpilot"],
     install_requires=[
-        "singer-python>=5.0.12",
+        "singer-python",
         "requests",
     ],
     entry_points="""

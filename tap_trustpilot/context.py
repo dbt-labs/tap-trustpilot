@@ -1,8 +1,8 @@
 from datetime import datetime, date
-import pendulum
+# import pendulum
 import singer
 from singer import bookmarks as bks_
-from .http import Client
+from .client import Client
 
 
 class Context(object):
@@ -55,12 +55,12 @@ class Context(object):
     def clear_offsets(self, tap_stream_id):
         bks_.clear_offset(self.state, tap_stream_id)
 
-    def update_start_date_bookmark(self, path):
-        val = self.get_bookmark(path)
-        if not val:
-            val = self.config["start_date"]
-            self.set_bookmark(path, val)
-        return pendulum.parse(val)
+    # def update_start_date_bookmark(self, path):
+    #     val = self.get_bookmark(path)
+    #     if not val:
+    #         val = self.config["start_date"]
+    #         self.set_bookmark(path, val)
+    #     return pendulum.parse(val)
 
     def write_state(self):
         singer.write_state(self.state)

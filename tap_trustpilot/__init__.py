@@ -4,9 +4,9 @@ import json
 import singer
 from singer import utils
 from singer.catalog import Catalog, CatalogEntry, Schema
-from . import streams as streams_
-from .context import Context
-from . import schemas
+from tap_trustpilot import streams as streams_
+from tap_trustpilot.context import Context
+from tap_trustpilot import schemas
 
 REQUIRED_CONFIG_KEYS = [
     "access_key",
@@ -71,8 +71,8 @@ def main():
         discover(ctx).dump()
         print()
     else:
-        ctx.catalog = Catalog.from_dict(args.properties) \
-            if args.properties else discover(ctx)
+        ctx.catalog = Catalog.from_dict(args.catalog.to_dict()) \
+            if args.catalog else discover(ctx)
         sync(ctx)
 
 if __name__ == "__main__":

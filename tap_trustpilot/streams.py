@@ -1,6 +1,6 @@
 import singer
-from .schemas import IDS
-from . import transform
+from tap_trustpilot.schemas import IDS
+from tap_trustpilot import transform
 
 LOGGER = singer.get_logger()
 PAGE_SIZE = 100
