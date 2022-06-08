@@ -1,7 +1,10 @@
 import requests
 from singer import metrics
+import singer
 import backoff
 import base64
+
+LOGGER = singer.get_logger()
 
 BASE_URL = "https://api.trustpilot.com/v1"
 AUTH_URL = "{}/oauth/oauth-business-users-for-applications/accesstoken".format(BASE_URL)
@@ -59,6 +62,7 @@ class Client(object):
 
         request.headers['Authorization'] = 'Bearer {}'.format(self._token)
         request.headers['apikey'] = self.access_key
+        request.headers['Content-Type'] = 'application/json'
 
         return self.session.send(request.prepare())
 
@@ -69,19 +73,29 @@ class Client(object):
     def create_get_request(self, path, **kwargs):
         return requests.Request(method="GET", url=self.url(path), **kwargs)
 
-    @backoff.on_exception(backoff.expo,
-                          RateLimitException,
-                          max_tries=10,
-                          factor=2)
+    def create_post_request(self, path, payload, **kwargs):
+        return requests.Request(method="POST", url=self.url(path), data=payload, **kwargs)
+
+    @backoff.on_exception(backoff.expo, RateLimitException, max_tries=10, factor=2)
+    @backoff.on_exception(backoff.expo, requests.Timeout, max_tries=10, factor=2)
     def request_with_handling(self, request, tap_stream_id):
         with metrics.http_request_timer(tap_stream_id) as timer:
             response = self.prepare_and_send(request)
             timer.tags[metrics.Tag.http_status_code] = response.status_code
         if response.status_code in [429, 503]:
             raise RateLimitException()
+        # below exception should handle Pagination limit exceeded error if page value is more than 1000
+        # depends on access level of access_token being used in config.json file
+        if response.status_code == 400 and response.json().get('details') == "Pagination limit exceeded.":
+            LOGGER.warning("400 Bad Request, Pagination limit exceeded.")
+            return []
         response.raise_for_status()
         return response.json()
 
     def GET(self, request_kwargs, *args, **kwargs):
         req = self.create_get_request(**request_kwargs)
+        return self.request_with_handling(req, *args, **kwargs)
+
+    def POST(self, request_kwargs, *args, **kwargs):
+        req = self.create_post_request(**request_kwargs)
         return self.request_with_handling(req, *args, **kwargs)
