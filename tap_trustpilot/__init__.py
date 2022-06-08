@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import sys
+
+# sys.path.append("./")
 import os
 import json
 import singer
@@ -7,6 +10,7 @@ from singer.catalog import Catalog, CatalogEntry, Schema
 from tap_trustpilot import streams as streams_
 from tap_trustpilot.context import Context
 from tap_trustpilot import schemas
+# from .schemas import get_schemas
 
 REQUIRED_CONFIG_KEYS = [
     "access_key",
@@ -23,20 +27,40 @@ def check_credentials_are_authorized(ctx):
     ctx.client.auth(ctx.config)
 
 
+# def discover(ctx):
+#     check_credentials_are_authorized(ctx)
+#     catalog = Catalog([])
+#     for tap_stream_id in schemas.stream_ids:
+#         schema = Schema.from_dict(schemas.load_schema(tap_stream_id),
+#                                   inclusion="automatic")
+#         catalog.streams.append(CatalogEntry(
+#             stream=tap_stream_id,
+#             tap_stream_id=tap_stream_id,
+#             key_properties=schemas.PK_FIELDS[tap_stream_id],
+#             schema=schema,
+#         ))
+#     return catalog
+
+# Modify key_properties. Take it from streams. Will do later
+# Add mdata into CatalogEntry.
+
 def discover(ctx):
     check_credentials_are_authorized(ctx)
-    catalog = Catalog([])
-    for tap_stream_id in schemas.stream_ids:
-        schema = Schema.from_dict(schemas.load_schema(tap_stream_id),
-                                  inclusion="automatic")
-        catalog.streams.append(CatalogEntry(
-            stream=tap_stream_id,
-            tap_stream_id=tap_stream_id,
-            key_properties=schemas.PK_FIELDS[tap_stream_id],
-            schema=schema,
-        ))
-    return catalog
-
+    discover_schemas, field_metadata = schemas.get_schemas()
+    streams = []
+    for stream_name, raw_schema in discover_schemas.items():
+        schema = Schema.from_dict(raw_schema)
+        mdata = field_metadata[stream_name]
+        streams.append(
+            CatalogEntry(
+                tap_stream_id=stream_name,
+                stream=stream_name,
+                schema=schema,
+                key_properties=schemas.PK_FIELDS[stream_name],
+                metadata=mdata
+            )
+        )
+    return Catalog(streams)
 
 def output_schema(stream):
     schema = schemas.load_schema(stream.tap_stream_id)

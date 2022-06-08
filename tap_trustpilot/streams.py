@@ -1,10 +1,23 @@
 import singer
-from tap_trustpilot.schemas import IDS
+# from tap_trustpilot.schemas import IDS
 from tap_trustpilot import transform
 
 LOGGER = singer.get_logger()
 PAGE_SIZE = 100
 
+class IDS(object):
+    BUSINESS_UNITS = "business_units"
+    REVIEWS = "reviews"
+    CONSUMERS = "consumers"
+
+stream_ids = [getattr(IDS, x) for x in dir(IDS)
+              if not x.startswith("__")]
+
+PK_FIELDS = {
+    IDS.BUSINESS_UNITS: ["id"],
+    IDS.REVIEWS: ["business_unit_id", "id"],
+    IDS.CONSUMERS: ["id"],
+}
 
 class Stream(object):
     def __init__(self, tap_stream_id, path,
@@ -43,6 +56,12 @@ class Stream(object):
 
 
 class BusinessUnits(Stream):
+
+    # tap_stream_id = "business_units"
+    key_properties = ['id']
+    replication_keys  = None
+    replication_method = "FULL_TABLE"
+    params = {}
     def raw_fetch(self, ctx):
         return ctx.client.GET({"path": self.path}, self.tap_stream_id)
 
@@ -96,6 +115,11 @@ class Paginated(Stream):
 
 
 class Reviews(Paginated):
+
+    key_properties = ["business_unit_id", "id"]
+    replication_keys  = None
+    replication_method = "FULL_TABLE"
+    params = {}
     def add_consumers_to_cache(self, ctx, batch):
         for record in batch:
             consumer_id = record.get('consumer', {}).get('id')
@@ -109,6 +133,11 @@ class Reviews(Paginated):
 
 
 class Consumers(Stream):
+
+    key_properties = ['id']
+    replication_keys  = None
+    replication_method = "FULL_TABLE"
+    params = {}
     def sync(self, ctx):
         business_unit_id = ctx.cache['business_unit']['id']
 
@@ -134,3 +163,11 @@ all_streams = [
     Consumers(IDS.CONSUMERS, '/consumers/{consumerId}/profile')
 ]
 all_stream_ids = [s.tap_stream_id for s in all_streams]
+
+STREAMS = {
+    'business_units': BusinessUnits(IDS.BUSINESS_UNITS, "/business-units/:business_unit_id/profileinfo"),
+    'reviews': Reviews(IDS.REVIEWS, '/business-units/:business_unit_id/reviews', collection_key='reviews'),
+    'consumers': Consumers(IDS.CONSUMERS, '/consumers/{consumerId}/profile')
+}
+    
+
