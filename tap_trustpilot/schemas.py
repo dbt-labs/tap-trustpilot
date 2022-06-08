@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 import os
 import singer
-from singer import utils
+from singer import utils,metadata
+from tap_trustpilot.streams import STREAMS, PK_FIELDS, IDS
 
+# class IDS(object):
+#     BUSINESS_UNITS = "business_units"
+#     REVIEWS = "reviews"
+#     CONSUMERS = "consumers"
 
-class IDS(object):
-    BUSINESS_UNITS = "business_units"
-    REVIEWS = "reviews"
-    CONSUMERS = "consumers"
+# stream_ids = [getattr(IDS, x) for x in dir(IDS)
+#               if not x.startswith("__")]
 
-stream_ids = [getattr(IDS, x) for x in dir(IDS)
-              if not x.startswith("__")]
-
-PK_FIELDS = {
-    IDS.BUSINESS_UNITS: ["id"],
-    IDS.REVIEWS: ["business_unit_id", "id"],
-    IDS.CONSUMERS: ["id"],
-}
+# PK_FIELDS = {
+#     IDS.BUSINESS_UNITS: ["id"],
+#     IDS.REVIEWS: ["business_unit_id", "id"],
+#     IDS.CONSUMERS: ["id"],
+# }
 
 
 def get_abs_path(path):
@@ -31,3 +31,43 @@ def load_schema(tap_stream_id):
 def load_and_write_schema(tap_stream_id):
     schema = load_schema(tap_stream_id)
     singer.write_schema(tap_stream_id, schema, PK_FIELDS[tap_stream_id])
+
+def get_schemas():
+    """ Load schemas from schemas folder """
+    schemas = {}
+    field_metadata = {}
+    # for stream_name, stream_metadata in STREAMS.items():
+    # path = get_abs_path(f'schemas/{stream_name}.json')
+    # with open(path, encoding='utf-8') as file:
+    #     schema = json.load(file)
+    # schemas[stream_name] = schema
+
+    # mdata = metadata.get_standard_metadata(
+    #     schema=schema,
+    #     key_properties=stream_metadata.key_properties,
+    #     replication_method=stream_metadata.replication_method,
+    #     valid_replication_keys=stream_metadata.replication_keys
+    # )
+    # field_metadata[stream_name] = mdata
+
+    # return schemas, field_metadata
+
+    import json
+    for stream_name, stream_metadata in STREAMS.items():
+        path = get_abs_path(f'schemas/{stream_name}.json')
+        with open(path, encoding='utf-8') as file:
+            schema = json.load(file)
+        schemas[stream_name] = schema
+
+        mdata = metadata.get_standard_metadata(
+            schema=schema,
+            key_properties=stream_metadata.key_properties,
+            replication_method=stream_metadata.replication_method,
+            valid_replication_keys=stream_metadata.replication_keys
+        )
+        field_metadata[stream_name] = mdata
+        field_metadata["stream"] = STREAMS
+
+    return schemas, field_metadata
+
+get_schemas()
