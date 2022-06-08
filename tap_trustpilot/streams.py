@@ -147,10 +147,10 @@ class Consumers(Stream):
     def sync(self, ctx):
         business_unit_id = ctx.cache['business_unit']['id']
 
-        total = len(ctx.cache['consumer_ids'])
+        total = len(ctx.cache.get('consumer_ids',[]))
 
         # chunk list of consumer IDs to smaller lists of size 1000
-        consumer_ids = list(ctx.cache['consumer_ids'])
+        consumer_ids = list(ctx.cache.get('consumer_ids',[]))
         chunked_consumer_ids = [consumer_ids[i: i+CONSUMER_CHUNK_SIZE] for i in range(0, len(consumer_ids),
                                                                                       CONSUMER_CHUNK_SIZE)]
 
